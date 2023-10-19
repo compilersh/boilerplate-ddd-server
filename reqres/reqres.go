@@ -3,6 +3,7 @@ package reqres
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -12,7 +13,16 @@ type Validator interface {
 }
 
 func DecodeJSON(r *http.Request, v Validator) error {
-	return json.NewDecoder(r.Body).Decode(v)
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(v)
+	if err != nil {
+		return err
+	}
+
+	if err := v.Validate(); err != nil {
+		return errors.New("validation error: " + err.Error())
+	}
+	return nil
 }
 
 func ResJSON(w http.ResponseWriter, status int, v interface{}) {
